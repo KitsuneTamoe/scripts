@@ -1,3 +1,10 @@
+--by Script Hub FTAP UNLOCK FREE RESONANSE V2.9 https://t.me/Scriptftap
+--by Script Hub FTAP UNLOCK FREE RESONANSE V2.9 https://t.me/Scriptftap
+--by Script Hub FTAP UNLOCK FREE RESONANSE V2.9 https://t.me/Scriptftap
+--by Script Hub FTAP UNLOCK FREE RESONANSE V2.9 https://t.me/Scriptftap
+--by Script Hub FTAP UNLOCK FREE RESONANSE V2.9 https://t.me/Scriptftap
+
+
 local sources = {}
 sources.Intro = [====[
 local Intro = {}
@@ -18165,7 +18172,7 @@ do
 								Generation = 0,
 							},
 							AnimationWhitelist = { ["180426354"] = true, ["168268306"] = true },
-							States = {},
+							States = { SpiderActive = false },
 							SpawnQueue = {},
 							SpawnOrder = 0,
 							RuntimeGates = {},
@@ -18386,7 +18393,149 @@ do
 								tbl7.RuntimeGates[arg] = bindableEvent
 								return bindableEvent
 							end
+                            tbl12.SpawnSpider = function()
+                                local v22, v23, v24 = tbl12.Char()
+                                if not (v23 and v24 and v24.Health > 0) then
+                                    fn18("Персонаж недоступен!", "Паук")
+                                    return
+                                end
 
+                                if tbl7.States.SpiderActive then
+                                    fn18("Паук уже активен!", "Паук")
+                                    return
+                                end
+
+                                -- Спавним на земле перед собой
+                                local lookVector = currentCamera.CFrame.LookVector
+                                local flatLook = Vector3.new(lookVector.X, 0, lookVector.Z)
+                                if flatLook.Magnitude > 0.01 then flatLook = flatLook.Unit else flatLook = Vector3.new(0,0,1) end
+                                local bodyPos = v23.Position + flatLook * 10
+
+                                fn18("Спавню тело паука...", "Паук")
+
+                                -- Тело (паллет)
+                                local body = tbl12.SpawnToy("PalletLightBrown", CFrame.new(bodyPos + Vector3.new(0, 3, 0)), 3)
+                                if not body then fn18("Не удалось заспавнить паллет!", "Паук") return end
+                                local bodyPart = tbl12.FindNicePart(body)
+                                if not bodyPart then tbl12.DestroyToy(body) return end
+                                if not tbl12.SNO(bodyPart, 1) then tbl12.DestroyToy(body) fn18("Нет контроля над телом", "Паук") return end
+
+                                task.wait(0.3)
+                                fn18("Спавню ноги...", "Паук")
+
+                                -- 6 ног
+                                local legs = {}
+                                local legParts = {}
+                                local legAngles = {}
+                                for i = 1, 6 do
+                                    local angle = (i - 1) / 6 * math.pi * 2
+                                    local legOffset = Vector3.new(math.cos(angle) * 4, -1, math.sin(angle) * 4)
+                                    local leg = tbl12.SpawnToy("LadderLightBrown", CFrame.new(bodyPos + legOffset + Vector3.new(0, 2, 0)), 3)
+                                    if leg then
+                                        task.wait(0.2)
+                                        local lp = tbl12.FindNicePart(leg)
+                                        if lp and tbl12.SNO(lp, 0.5) then
+                                            lp.CanCollide = false
+                                            legs[#legs + 1] = leg
+                                            legParts[#legParts + 1] = lp
+                                            legAngles[#legAngles + 1] = angle
+                                        else
+                                            if leg then tbl12.DestroyToy(leg) end
+                                        end
+                                    end
+                                end
+
+                                if #legParts < 6 then
+                                    fn18("Нужно 6 лестниц в инвентаре!", "Паук")
+                                    tbl12.DestroyToy(body)
+                                    for _, l in legs do if l then tbl12.DestroyToy(l) end end
+                                    return
+                                end
+
+                                fn18("Паук готов! Садись и управляй камерой", "Паук", nil, 8)
+                                tbl7.States.SpiderActive = true
+
+                                -- Управление через Heartbeat
+                                local startTime = os.clock()
+                                local spiderPos = bodyPart.Position
+                                local spiderHeight = bodyPart.Position.Y
+                                local runConn = nil
+
+                                runConn = RunService.Heartbeat:Connect(function(dt)
+                                    if flag11 or not tbl7.States.SpiderActive or not bodyPart.Parent or not v24.Parent or v24.Health <= 0 then
+                                        if runConn then runConn:Disconnect() runConn = nil end
+                                        tbl7.States.SpiderActive = false
+                                        tbl12.DestroyToy(body)
+                                        for _, l in legs do if l then tbl12.DestroyToy(l) end end
+                                        return
+                                    end
+
+                                    local now = os.clock() - startTime
+
+                                    -- Направление по камере (только горизонталь)
+                                    local moveDir = currentCamera.CFrame.LookVector
+                                    moveDir = Vector3.new(moveDir.X, 0, moveDir.Z)
+                                    if moveDir.Magnitude > 0.01 then moveDir = moveDir.Unit else moveDir = Vector3.zero end
+
+                                    -- Движение
+                                    local speed = 30
+                                    spiderPos += moveDir * speed * dt
+
+                                    -- Держим высоту (не даём падать)
+                                    local rayOrigin = Vector3.new(spiderPos.X, spiderPos.Y + 10, spiderPos.Z)
+                                    local rayDir = Vector3.new(0, -50, 0)
+                                    local rayParams = RaycastParams.new()
+                                    rayParams.FilterType = Enum.RaycastFilterType.Exclude
+                                    rayParams.FilterDescendantsInstances = {v22, body}
+                                    for _, l in legs do if l then table.insert(rayParams.FilterDescendantsInstances, l) end end
+                                    local rayResult = workspace:Raycast(rayOrigin, rayDir, rayParams)
+                                    if rayResult then
+                                        spiderHeight = rayResult.Position.Y + 2
+                                    end
+
+                                    -- Ставим тело
+                                    local bodyCFrame = CFrame.new(Vector3.new(spiderPos.X, spiderHeight, spiderPos.Z))
+                                    if moveDir.Magnitude > 0.01 then
+                                        bodyCFrame = CFrame.lookAt(Vector3.new(spiderPos.X, spiderHeight, spiderPos.Z), Vector3.new(spiderPos.X, spiderHeight, spiderPos.Z) + moveDir)
+                                    end
+                                    bodyPart.CFrame = bodyCFrame
+                                    tbl12.ResetVelocity(bodyPart)
+
+                                    -- Анимация ног
+                                    for i, lp in ipairs(legParts) do
+                                        if not lp or not lp.Parent then continue end
+                                        local stepCycle = math.sin(now * 8 + legAngles[i])
+                                        local legBase = Vector3.new(
+                                            math.cos(legAngles[i]) * 4,
+                                            -1 + stepCycle * 0.3,
+                                            math.sin(legAngles[i]) * 4 + stepCycle * 1.2
+                                        )
+                                        lp.CFrame = bodyCFrame * CFrame.new(legBase)
+                                        tbl12.ResetVelocity(lp)
+                                    end
+
+                                    -- Сажаем игрока на паллет (телепорт каждый кадр)
+                                    if v23.Parent and v24.Health > 0 then
+                                        v23.CFrame = bodyCFrame * CFrame.new(0, 3, 0)
+                                        tbl12.ResetVelocity(v23)
+                                    end
+                                end)
+
+                                -- Автоудаление через 30 секунд
+                                task.delay(30, function()
+                                    if runConn then runConn:Disconnect() runConn = nil end
+                                    tbl7.States.SpiderActive = false
+                                    tbl12.DestroyToy(body)
+                                    for _, l in legs do if l then tbl12.DestroyToy(l) end end
+                                end)
+                            end
+
+                            tbl12.DespawnSpider = function()
+                                tbl7.States.SpiderActive = false
+                                fn18("Паук удалён!", "Паук")
+                                local v22, v23, v24 = tbl12.Char()
+                                if v24 then v24.Sit = false end
+                            end
 							tbl12.SetRuntimeToggle = function(arg, arg2)
 								tbl8[arg] = arg2
 								local v24 = tbl7.RuntimeGates[arg]
@@ -38402,11 +38551,40 @@ Escape Timer: %*]]
 			end,
 		})
 	end
+    -- do
+    --     local SpiderBox = tbl15.Misc:AddRightGroupbox("Паук 🕷️", "bug")
+
+    --     SpiderBox:AddButton({
+    --         Text = "Заспавнить паука",
+    --         Func = function()
+    --             tbl12.SpawnSpider()
+    --         end,
+    --     }):AddKeyPicker("SpiderSpawnKey", {
+    --         Text = "Паук",
+    --         Default = nil,
+    --         Mode = "Press",
+    --         NoUI = false,
+    --     })
+
+    --     SpiderBox:AddButton({
+    --         Text = "Удалить паука",
+    --         Func = function()
+    --             tbl12.DespawnSpider()
+    --         end,
+    --     }):AddKeyPicker("SpiderDespawnKey", {
+    --         Text = "Удалить паука",
+    --         Default = nil,
+    --         Mode = "Press",
+    --         NoUI = false,
+    --     })
+
+    --     SpiderBox:AddLabel("Смотри куда хочешь ехать — паук идёт за камерой", true)
+    -- end
     do
         local ObjectLauncher = tbl15.Misc:AddRightGroupbox("Object Launcher", "rocket")
 
         ObjectLauncher:AddDropdown("LauncherObjectDD", {
-            Values = { "AnvilGray", "GlassBoxGray", "DrawerLightBrown" },
+            Values = { "AnvilGray", "GlassBoxGray", "DrawerLightBrown","BombMissile"},
             Default = 1,
             Multi = false,
             Searchable = true,
